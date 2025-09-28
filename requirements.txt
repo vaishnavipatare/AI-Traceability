@@ -1,0 +1,6 @@
+numpy
+pandas
+streamlit
+PyMuPDF        # fitz
+faiss-cpu      # or faiss-gpu if you plan to use GPU
+sentence-transformers
