@@ -1,0 +1,6 @@
+{
+  "local_llm_path": "models/mistral-7b-instruct-v0.2.Q4_K_M.gguf",
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "faiss_index_path": "faiss_index.bin",
+  "sqlite_db_path": "chunks.db"
+}

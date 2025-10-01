@@ -1,4 +1,3 @@
-
 import os
 import re
 import json
@@ -6,6 +5,8 @@ import fitz  # PyMuPDF
 import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
+from llama_cpp import Llama
+
 
 # ---------------- PDF STRUCTURE EXTRACTION ---------------- #
 
@@ -160,10 +161,42 @@ def search_faiss(query, index, metadata_path="pdf_metadata.json", top_k=6):
     return results
 
 
+# ---------------- LLM SUMMARIZATION ---------------- #
+
+# Load local LLM (adjust path in config.json)
+with open("config.json") as f:
+    cfg = json.load(f)
+
+llm = Llama(model_path=cfg["local_llm_path"], n_ctx=2048, n_threads=6)  # use more threads if available
+
+def generate_summary_llm(results, query):
+    combined_text = "\n\n".join(
+        [f"From {r['pdf_name']} (Page {r['page']}, Section: {r['location']}): {r['text']}" for r in results]
+    )
+    prompt = f"""
+    You are a helpful assistant. Summarize the following retrieved passages in relation to the query: "{query}".
+    Only include the most important findings. Avoid redundancy.
+
+    Passages:
+    {combined_text}
+    """
+
+    output = llm(prompt, max_tokens=256)
+
+    # ✅ Safely extract the summary depending on version
+    if "choices" in output and len(output["choices"]) > 0:
+        return output["choices"][0].get("text", "").strip()
+    elif "text" in output:
+        return output["text"].strip()
+    else:
+        return str(output)
+
+
+
 # ---------------- MAIN PIPELINE ---------------- #
 
 if __name__ == "__main__":
-    pdf_folder ="C:/Users/User/Desktop/traceability/data"  # change this to your folder path
+    pdf_folder = "C:/Users/User/Desktop/traceability/data"  # change this to your folder path
 
     # Step 1: Extract structure from multiple PDFs
     all_pdf_data = extract_multiple_pdfs(pdf_folder)
@@ -181,5 +214,7 @@ if __name__ == "__main__":
     print("\nTop results:")
     for r in results:
         print(f"[{r['pdf_name']} | {r['location']} | Page {r['page']}] (score={r['score']:.4f})")
-
-
+    top_results=results[:3]
+    print("\n--- Summary ---")
+    summary = generate_summary_llm(top_results, query)
+    print(summary)
